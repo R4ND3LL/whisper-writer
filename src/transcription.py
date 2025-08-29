@@ -2,6 +2,14 @@ import io
 import os
 import numpy as np
 import soundfile as sf
+
+# Pre-import onnxruntime to avoid DLL conflicts with CUDA
+try:
+    import onnxruntime
+    print(f"Pre-loaded onnxruntime {onnxruntime.__version__}")
+except ImportError:
+    print("Warning: onnxruntime not available for VAD")
+
 from faster_whisper import WhisperModel, BatchedInferencePipeline
 from openai import OpenAI
 
@@ -47,7 +55,7 @@ def create_local_model():
     # Create batched pipeline if batch_size > 1 for better performance
     if batch_size > 1:
         ConfigManager.console_print(f'Using batched inference with batch_size={batch_size}')
-        return BatchedInferencePipeline(model=model, batch_size=batch_size)
+        return BatchedInferencePipeline(model=model)
     
     return model
 
@@ -65,7 +73,10 @@ def transcribe_local(audio_data, local_model=None):
     try:
         # Check if using batched pipeline or regular model
         if isinstance(local_model, BatchedInferencePipeline):
+            # BatchedInferencePipeline requires batch_size in transcribe method
+            batch_size = model_options['local'].get('batch_size', 1)
             response = local_model.transcribe(audio=audio_data_float,
+                                            batch_size=batch_size,
                                             language=model_options['common']['language'],
                                             initial_prompt=model_options['common']['initial_prompt'],
                                             condition_on_previous_text=model_options['local']['condition_on_previous_text'],
@@ -79,9 +90,51 @@ def transcribe_local(audio_data, local_model=None):
                                             temperature=model_options['common']['temperature'],
                                             vad_filter=model_options['local']['vad_filter'])
     except Exception as e:
+        import traceback
+        import sys
+        from datetime import datetime
+        
+        ConfigManager.console_print(f'\n=== VAD ERROR at {datetime.now().strftime("%H:%M:%S.%f")[:-3]} ===')
         ConfigManager.console_print(f'Error during transcription: {e}')
-        # Fallback to basic transcription without extra parameters
-        response = local_model.transcribe(audio=audio_data_float)
+        ConfigManager.console_print(f'Error type: {type(e).__name__}')
+        ConfigManager.console_print(f'Audio shape: {audio_data_float.shape}, dtype: {audio_data_float.dtype}')
+        ConfigManager.console_print(f'Audio min: {audio_data_float.min():.4f}, max: {audio_data_float.max():.4f}')
+        ConfigManager.console_print(f'Model type: {type(local_model).__name__}')
+        ConfigManager.console_print(f'VAD filter requested: {model_options["local"]["vad_filter"]}')
+        
+        # Check onnxruntime availability
+        try:
+            import onnxruntime
+            ConfigManager.console_print(f'onnxruntime version: {onnxruntime.__version__}')
+        except ImportError:
+            ConfigManager.console_print('onnxruntime NOT available in current context!')
+        
+        # Print stack trace for debugging
+        ConfigManager.console_print('Stack trace:')
+        ConfigManager.console_print(traceback.format_exc())
+        # Try without VAD if VAD fails
+        try:
+            if isinstance(local_model, BatchedInferencePipeline):
+                batch_size = model_options['local'].get('batch_size', 1)
+                response = local_model.transcribe(audio=audio_data_float,
+                                                batch_size=batch_size,
+                                                language=model_options['common']['language'],
+                                                initial_prompt=model_options['common']['initial_prompt'],
+                                                condition_on_previous_text=model_options['local']['condition_on_previous_text'],
+                                                temperature=model_options['common']['temperature'],
+                                                vad_filter=False)  # Disable VAD on error
+            else:
+                response = local_model.transcribe(audio=audio_data_float,
+                                                language=model_options['common']['language'],
+                                                initial_prompt=model_options['common']['initial_prompt'],
+                                                condition_on_previous_text=model_options['local']['condition_on_previous_text'],
+                                                temperature=model_options['common']['temperature'],
+                                                vad_filter=False)  # Disable VAD on error
+            ConfigManager.console_print('Transcription succeeded without VAD filter')
+        except Exception as e2:
+            ConfigManager.console_print(f'Fallback also failed: {e2}')
+            # Final fallback to basic transcription
+            response = local_model.transcribe(audio=audio_data_float)
     
     return ''.join([segment.text for segment in list(response[0])])
 
@@ -121,6 +174,18 @@ def post_process_transcription(transcription):
     Post-process the transcription based on the user's settings.
     """
     post_processing_options = ConfigManager.get_config_section('post_processing')
+    
+    # Remove silence dots pattern (when VAD fails)
+    # Only remove if it's JUST dots and spaces, nothing else
+    import re
+    if re.match(r'^[\s\.]+$', transcription):
+        # Entire transcription is just dots and spaces - silence
+        return ''
+    
+    # Remove excessive dots (3+ dots with spaces between them)
+    # This keeps normal sentence periods but removes silence artifacts
+    transcription = re.sub(r'(\s*\.\s*){3,}', ' ', transcription)
+    transcription = transcription.strip()  # Remove leading/trailing whitespace
 
     if post_processing_options['remove_trailing_period'] and transcription.endswith('.'):
         transcription = transcription[:-1]
@@ -128,7 +193,8 @@ def post_process_transcription(transcription):
     if post_processing_options['remove_capitalization']:
         transcription = transcription.lower()
 
-    if post_processing_options['add_trailing_space']:
+    # Only add trailing space if there's actual content
+    if transcription and post_processing_options['add_trailing_space']:
         transcription += ' '
 
     return transcription
