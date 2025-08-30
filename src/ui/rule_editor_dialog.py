@@ -19,15 +19,15 @@ class RuleEditorDialog(QDialog):
         self.rule = rule or {}
         self.setWindowTitle("Edit Rule" if rule else "Add New Rule")
         self.setModal(True)
-        self.resize(600, 500)
+        self.resize(900, 800)
         
-        self.init_ui()
-        self.load_rule_data()
-        
-        # Set up live preview timer
+        # Set up live preview timer BEFORE creating UI
         self.preview_timer = QTimer()
         self.preview_timer.setSingleShot(True)
         self.preview_timer.timeout.connect(self.update_preview)
+        
+        self.init_ui()
+        self.load_rule_data()
     
     def init_ui(self):
         """Initialize the user interface."""
@@ -220,14 +220,16 @@ class RuleEditorDialog(QDialog):
             templates_data = ConfigManager.get_rule_templates()
             templates = templates_data.get('templates', {})
             
-            for category, category_rules in templates.items():
+            for category, category_data in templates.items():
                 # Add category header
-                category_item = QListWidgetItem(f"--- {category.replace('_', ' ').title()} ---")
+                category_name = category_data.get('name', category.replace('_', ' ').title())
+                category_item = QListWidgetItem(f"--- {category_name} ---")
                 category_item.setFlags(Qt.NoItemFlags)  # Make it non-selectable
                 category_item.setData(Qt.UserRole, None)
                 self.templates_list.addItem(category_item)
                 
-                # Add rules in category
+                # Add rules in category - get rules from the 'rules' key
+                category_rules = category_data.get('rules', [])
                 for rule in category_rules:
                     pattern = rule.get('pattern', '')
                     description = rule.get('description', pattern)

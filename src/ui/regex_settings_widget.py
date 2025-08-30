@@ -3,7 +3,7 @@ import os
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
     QPushButton, QHeaderView, QCheckBox, QMessageBox, QFileDialog,
-    QTextEdit, QLabel, QSplitter, QGroupBox, QLineEdit
+    QTextEdit, QLabel, QSplitter, QGroupBox, QLineEdit, QToolButton
 )
 from PyQt5.QtCore import Qt, pyqtSignal
 
@@ -59,24 +59,57 @@ class RegexSettingsWidget(QWidget):
         self.add_button = QPushButton("Add Rule")
         self.add_button.clicked.connect(self.add_rule)
         buttons_layout.addWidget(self.add_button)
+        buttons_layout.addWidget(self.create_help_button(
+            "Add Rule: Create a new text replacement rule.\n\n"
+            "• Use 'Regex' mode for pattern matching (e.g., \\bum+\\b to match 'um', 'umm')\n"
+            "• Use 'Text' mode for simple word replacement (case-insensitive)\n"
+            "• Set priority (lower numbers run first)\n"
+            "• Test your rules with sample text before saving"
+        ))
         
         self.edit_button = QPushButton("Edit")
         self.edit_button.clicked.connect(self.edit_selected_rule)
         buttons_layout.addWidget(self.edit_button)
+        buttons_layout.addWidget(self.create_help_button(
+            "Edit Rule: Modify the selected text replacement rule.\n\n"
+            "• Double-click any rule to edit it\n"
+            "• Use the Templates tab to browse pre-built rules\n"
+            "• Test your changes with the live preview feature"
+        ))
         
         self.delete_button = QPushButton("Delete")
         self.delete_button.clicked.connect(self.delete_selected_rule)
         buttons_layout.addWidget(self.delete_button)
+        buttons_layout.addWidget(self.create_help_button(
+            "Delete Rule: Remove the selected rule permanently.\n\n"
+            "• You'll be asked to confirm before deletion\n"
+            "• Deleted rules cannot be recovered\n"
+            "• Consider disabling rules instead if unsure"
+        ))
         
         buttons_layout.addStretch()
         
         self.import_button = QPushButton("Import...")
         self.import_button.clicked.connect(self.import_rules)
         buttons_layout.addWidget(self.import_button)
+        buttons_layout.addWidget(self.create_help_button(
+            "Import Rules: Load rules from a YAML or JSON file.\n\n"
+            "• Share rule sets between computers\n"
+            "• Choose to replace existing rules or add to them\n"
+            "• Supports both .yaml and .json file formats\n"
+            "• Rules are validated before import"
+        ))
         
         self.export_button = QPushButton("Export...")
         self.export_button.clicked.connect(self.export_rules)
         buttons_layout.addWidget(self.export_button)
+        buttons_layout.addWidget(self.create_help_button(
+            "Export Rules: Save your rules to a file for backup or sharing.\n\n"
+            "• Create backups of your custom rules\n"
+            "• Share rule sets with others\n"
+            "• Choose YAML (human-readable) or JSON format\n"
+            "• All rules are validated before export"
+        ))
         
         rules_layout.addLayout(buttons_layout)
         splitter.addWidget(rules_group)
@@ -93,10 +126,20 @@ class RegexSettingsWidget(QWidget):
         self.test_input.setPlaceholderText("Enter text to test regex rules...")
         test_layout.addWidget(self.test_input)
         
-        # Test button
+        # Test button with help
+        test_button_layout = QHBoxLayout()
         test_button = QPushButton("Test Rules")
         test_button.clicked.connect(self.test_rules)
-        test_layout.addWidget(test_button)
+        test_button_layout.addWidget(test_button)
+        test_button_layout.addWidget(self.create_help_button(
+            "Test Rules: Preview how your rules will transform text.\n\n"
+            "• Type sample text in the input area\n"
+            "• Click 'Test Rules' to see the result after all rules are applied\n"
+            "• Rules are applied in priority order (lower numbers first)\n"
+            "• Use this to verify rules work before dictating"
+        ))
+        test_button_layout.addStretch()
+        test_layout.addLayout(test_button_layout)
         
         # Output text
         test_layout.addWidget(QLabel("Test Output:"))
@@ -114,6 +157,29 @@ class RegexSettingsWidget(QWidget):
         # Enable/disable buttons based on selection
         self.rules_table.selectionModel().selectionChanged.connect(self.update_button_states)
         self.update_button_states()
+    
+    def create_help_button(self, help_text):
+        """Create a help button with tooltip text."""
+        help_button = QToolButton()
+        help_button.setText('?')
+        help_button.setFixedSize(20, 20)
+        help_button.setStyleSheet("""
+            QToolButton {
+                background-color: #e1e1e1;
+                border: 1px solid #adadad;
+                border-radius: 10px;
+                font-weight: bold;
+                color: #333;
+            }
+            QToolButton:hover {
+                background-color: #d4d4d4;
+            }
+        """)
+        help_button.setToolTip(help_text)
+        help_button.clicked.connect(lambda: QMessageBox.information(
+            self, 'Help', help_text
+        ))
+        return help_button
     
     def load_rules(self):
         """Load rules from configuration into the table."""
@@ -136,18 +202,63 @@ class RegexSettingsWidget(QWidget):
             replacement_item = QTableWidgetItem(rule.get('replacement', ''))
             self.rules_table.setItem(row, 2, replacement_item)
             
-            # Type
+            # Type - make it read-only
             rule_type = "Text" if not rule.get('is_regex', True) else "Regex"
             type_item = QTableWidgetItem(rule_type)
+            type_item.setFlags(type_item.flags() & ~Qt.ItemIsEditable)  # Remove editable flag
+            type_item.setToolTip("Use the Edit button to change between Regex and Text modes")
             self.rules_table.setItem(row, 3, type_item)
             
-            # Description
+            # Description - make it read-only  
             description_item = QTableWidgetItem(rule.get('description', ''))
+            description_item.setFlags(description_item.flags() & ~Qt.ItemIsEditable)  # Remove editable flag
+            description_item.setToolTip("Use the Edit button to modify the description")
             self.rules_table.setItem(row, 4, description_item)
             
-            # Actions - empty for now, could add quick edit buttons later
-            action_item = QTableWidgetItem('')
-            self.rules_table.setItem(row, 5, action_item)
+            # Actions - add quick action buttons
+            actions_widget = QWidget()
+            actions_layout = QHBoxLayout()
+            actions_layout.setContentsMargins(4, 2, 4, 2)
+            actions_layout.setSpacing(2)
+            
+            # Toggle enabled button
+            toggle_button = QPushButton("✓" if rule.get('enabled', True) else "✗")
+            toggle_button.setFixedSize(20, 20)
+            toggle_button.setStyleSheet("""
+                QPushButton {
+                    border: 1px solid #ccc;
+                    border-radius: 3px;
+                    font-size: 12px;
+                    font-weight: bold;
+                }
+                QPushButton:hover {
+                    background-color: #e0e0e0;
+                }
+            """)
+            toggle_button.setToolTip("Click to enable/disable this rule")
+            toggle_button.clicked.connect(lambda checked, r=row: self.toggle_rule_enabled(r))
+            actions_layout.addWidget(toggle_button)
+            
+            # Duplicate button
+            dup_button = QPushButton("⧉")
+            dup_button.setFixedSize(20, 20)
+            dup_button.setStyleSheet("""
+                QPushButton {
+                    border: 1px solid #ccc;
+                    border-radius: 3px;
+                    font-size: 12px;
+                }
+                QPushButton:hover {
+                    background-color: #e0e0e0;
+                }
+            """)
+            dup_button.setToolTip("Click to duplicate this rule")
+            dup_button.clicked.connect(lambda checked, r=row: self.duplicate_rule(r))
+            actions_layout.addWidget(dup_button)
+            
+            actions_layout.addStretch()
+            actions_widget.setLayout(actions_layout)
+            self.rules_table.setCellWidget(row, 5, actions_widget)
     
     def add_rule(self):
         """Add a new rule via dialog."""
@@ -320,8 +431,11 @@ class RegexSettingsWidget(QWidget):
             # Import the regex plugin to test
             from plugins.available.regex_plugin import RegexProcessor
             
-            # Create processor instance
-            processor = RegexProcessor()
+            # Get current rules from config
+            current_rules = ConfigManager.get_regex_rules()
+            
+            # Create processor instance with current rules
+            processor = RegexProcessor(current_rules)
             
             # Process the text
             result = processor.process(input_text)
@@ -337,6 +451,41 @@ class RegexSettingsWidget(QWidget):
         
         self.edit_button.setEnabled(has_selection)
         self.delete_button.setEnabled(has_selection)
+    
+    def toggle_rule_enabled(self, row):
+        """Toggle the enabled state of a rule."""
+        try:
+            rules = ConfigManager.get_regex_rules()
+            if 0 <= row < len(rules):
+                # Toggle enabled state
+                rules[row]['enabled'] = not rules[row].get('enabled', True)
+                ConfigManager.set_regex_rules(rules)
+                
+                # Refresh the table
+                self.load_rules()
+                self.rules_changed.emit()
+        except Exception as e:
+            QMessageBox.critical(self, 'Error', f'Failed to toggle rule: {str(e)}')
+    
+    def duplicate_rule(self, row):
+        """Duplicate a rule."""
+        try:
+            rules = ConfigManager.get_regex_rules()
+            if 0 <= row < len(rules):
+                # Copy the rule
+                original_rule = rules[row].copy()
+                original_rule['description'] = f"Copy of {original_rule.get('description', original_rule.get('pattern', 'rule'))}"
+                
+                # Add the copy
+                ConfigManager.add_regex_rule(**original_rule)
+                
+                # Refresh the table
+                self.load_rules()
+                self.rules_changed.emit()
+                
+                QMessageBox.information(self, 'Rule Duplicated', 'Rule has been duplicated successfully.')
+        except Exception as e:
+            QMessageBox.critical(self, 'Error', f'Failed to duplicate rule: {str(e)}')
     
     def save_changes(self):
         """Save any pending changes (called from parent settings window)."""

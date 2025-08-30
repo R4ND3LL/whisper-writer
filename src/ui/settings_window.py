@@ -3,8 +3,10 @@ import sys
 from dotenv import set_key, load_dotenv
 from PyQt5.QtWidgets import (
     QApplication, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QComboBox, QCheckBox,
-    QMessageBox, QTabWidget, QWidget, QSizePolicy, QSpacerItem, QToolButton, QStyle, QFileDialog
+    QMessageBox, QTabWidget, QWidget, QSizePolicy, QSpacerItem, QToolButton, QStyle, QFileDialog,
+    QGroupBox
 )
+from ui.collapsible_widget import CollapsibleGroupBox
 from PyQt5.QtCore import Qt, QCoreApplication, QProcess, pyqtSignal
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -19,7 +21,7 @@ class SettingsWindow(BaseWindow):
 
     def __init__(self):
         """Initialize the settings window."""
-        super().__init__('Settings', 700, 700)
+        super().__init__('Settings', 1100, 1100)
         self.schema = ConfigManager.get_schema()
         self.init_settings_ui()
 
@@ -41,11 +43,34 @@ class SettingsWindow(BaseWindow):
         """Create tabs for each category in the schema."""
         for category, settings in self.schema.items():
             if category == 'plugins':
-                # Use custom regex settings widget for plugins
+                # Skip plugins - we'll merge it into post_processing
+                continue
+            elif category == 'post_processing':
+                # Special handling for post processing - add both basic settings and regex rules
+                tab = QWidget()
+                tab_layout = QVBoxLayout()
+                tab.setLayout(tab_layout)
+                self.tabs.addTab(tab, 'Post Processing')
+                
+                # Add basic post processing settings in a collapsible group
+                basic_group = CollapsibleGroupBox("Basic Text Processing")
+                basic_group.setExpanded(True)  # Start expanded
+                
+                self.create_settings_widgets(basic_group.content_layout, category, settings)
+                tab_layout.addWidget(basic_group)
+                
+                # Add regex rules in a truly collapsible group
+                regex_group = CollapsibleGroupBox("Advanced Regex Rules")
+                regex_group.setExpanded(True)  # Start expanded
+                
+                # Add the regex settings widget
                 from ui.regex_settings_widget import RegexSettingsWidget
                 self.regex_widget = RegexSettingsWidget()
                 self.regex_widget.rules_changed.connect(self.on_regex_rules_changed)
-                self.tabs.addTab(self.regex_widget, 'Plugins')
+                regex_group.addWidget(self.regex_widget)
+                
+                tab_layout.addWidget(regex_group)
+                tab_layout.addSpacerItem(QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding))
             else:
                 # Standard auto-generated tab
                 tab = QWidget()
@@ -208,6 +233,10 @@ class SettingsWindow(BaseWindow):
         """Reset the settings to the saved values."""
         ConfigManager.reload_config()
         self.update_widgets_from_config()
+        
+        # Also reload the regex widget if it exists
+        if hasattr(self, 'regex_widget'):
+            self.regex_widget.load_rules()
 
     def update_widgets_from_config(self):
         """Update all widgets with values from the current configuration."""
