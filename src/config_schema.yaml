@@ -177,3 +177,55 @@ misc:
     value: false
     type: bool
     description: "Set to true to play a noise after the transcription has been typed out."
+
+# Plugin configuration
+plugins:
+  regex_processor:
+    enabled:
+      value: true
+      type: bool
+      description: "Enable or disable the regex post-processing plugin."
+    rules:
+      value: []
+      type: array
+      description: "List of regex and text replacement rules."
+      items:
+        type: object
+        required: [pattern, replacement]
+        properties:
+          pattern:
+            type: str
+            description: "The pattern to search for (regex or plain text)."
+          replacement:
+            type: str
+            description: "The replacement text."
+          description:
+            type: str
+            description: "Human-readable description of what this rule does."
+          enabled:
+            type: bool
+            default: true
+            description: "Whether this rule is active."
+          is_regex:
+            type: bool
+            default: true
+            description: "True for regex patterns, false for plain text replacement."
+          flags:
+            type: array
+            description: "Regex flags or text options (ignorecase, multiline, dotall, etc.)."
+            items:
+              type: str
+          priority:
+            type: int
+            default: 50
+            description: "Rule execution priority (lower numbers run first)."
+          conditions:
+            type: object
+            description: "Conditional execution rules based on context."
+            properties:
+              context_contains:
+                type: array
+                items:
+                  type: str
+              context_values:
+                type: object

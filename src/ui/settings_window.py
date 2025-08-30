@@ -40,13 +40,21 @@ class SettingsWindow(BaseWindow):
     def create_tabs(self):
         """Create tabs for each category in the schema."""
         for category, settings in self.schema.items():
-            tab = QWidget()
-            tab_layout = QVBoxLayout()
-            tab.setLayout(tab_layout)
-            self.tabs.addTab(tab, category.replace('_', ' ').capitalize())
+            if category == 'plugins':
+                # Use custom regex settings widget for plugins
+                from ui.regex_settings_widget import RegexSettingsWidget
+                self.regex_widget = RegexSettingsWidget()
+                self.regex_widget.rules_changed.connect(self.on_regex_rules_changed)
+                self.tabs.addTab(self.regex_widget, 'Plugins')
+            else:
+                # Standard auto-generated tab
+                tab = QWidget()
+                tab_layout = QVBoxLayout()
+                tab.setLayout(tab_layout)
+                self.tabs.addTab(tab, category.replace('_', ' ').capitalize())
 
-            self.create_settings_widgets(tab_layout, category, settings)
-            tab_layout.addSpacerItem(QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding))
+                self.create_settings_widgets(tab_layout, category, settings)
+                tab_layout.addSpacerItem(QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding))
 
     def create_settings_widgets(self, layout, category, settings):
         """Create widgets for each setting in a category."""
@@ -298,3 +306,9 @@ class SettingsWindow(BaseWindow):
             super().closeEvent(event)
         else:
             event.ignore()
+    
+    def on_regex_rules_changed(self):
+        """Handle regex rules changes from the regex widget."""
+        # Rules are automatically saved by the regex widget through ConfigManager
+        # This callback is here in case we need to do additional processing
+        pass

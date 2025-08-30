@@ -153,3 +153,189 @@ class ConfigManager:
         """Print a message to the console if enabled in the configuration."""
         if cls._instance and cls._instance.config['misc']['print_to_terminal']:
             print(message)
+
+    # Regex rule management methods
+    @classmethod
+    def get_regex_rules(cls):
+        """Get the list of regex replacement rules."""
+        if cls._instance is None:
+            raise RuntimeError("ConfigManager not initialized")
+        return cls.get_config_section('plugins', 'regex_processor', 'rules') or []
+    
+    @classmethod
+    def set_regex_rules(cls, rules):
+        """Set the list of regex replacement rules."""
+        if cls._instance is None:
+            raise RuntimeError("ConfigManager not initialized")
+        cls.set_config_value(rules, 'plugins', 'regex_processor', 'rules')
+    
+    @classmethod
+    def get_regex_processor_enabled(cls):
+        """Check if regex processor plugin is enabled."""
+        if cls._instance is None:
+            raise RuntimeError("ConfigManager not initialized")
+        return cls.get_config_value('plugins', 'regex_processor', 'enabled') or False
+    
+    @classmethod
+    def set_regex_processor_enabled(cls, enabled):
+        """Enable or disable the regex processor plugin."""
+        if cls._instance is None:
+            raise RuntimeError("ConfigManager not initialized")
+        cls.set_config_value(enabled, 'plugins', 'regex_processor', 'enabled')
+    
+    @classmethod
+    def add_regex_rule(cls, pattern, replacement, description=None, enabled=True, 
+                       is_regex=True, flags=None, priority=50, conditions=None):
+        """Add a new regex rule to the configuration."""
+        if cls._instance is None:
+            raise RuntimeError("ConfigManager not initialized")
+        
+        rule = {
+            'pattern': pattern,
+            'replacement': replacement,
+            'enabled': enabled,
+            'is_regex': is_regex,
+            'priority': priority
+        }
+        
+        if description:
+            rule['description'] = description
+        if flags:
+            rule['flags'] = flags
+        if conditions:
+            rule['conditions'] = conditions
+        
+        rules = cls.get_regex_rules()
+        rules.append(rule)
+        cls.set_regex_rules(rules)
+        return rule
+    
+    @classmethod
+    def remove_regex_rule(cls, rule_index):
+        """Remove a regex rule by index."""
+        if cls._instance is None:
+            raise RuntimeError("ConfigManager not initialized")
+        
+        rules = cls.get_regex_rules()
+        if 0 <= rule_index < len(rules):
+            removed_rule = rules.pop(rule_index)
+            cls.set_regex_rules(rules)
+            return removed_rule
+        else:
+            raise IndexError("Rule index out of range")
+    
+    @classmethod
+    def update_regex_rule(cls, rule_index, **updates):
+        """Update a regex rule by index."""
+        if cls._instance is None:
+            raise RuntimeError("ConfigManager not initialized")
+        
+        rules = cls.get_regex_rules()
+        if 0 <= rule_index < len(rules):
+            rules[rule_index].update(updates)
+            cls.set_regex_rules(rules)
+            return rules[rule_index]
+        else:
+            raise IndexError("Rule index out of range")
+    
+    @classmethod
+    def validate_regex_rules(cls, rules=None):
+        """Validate regex rules structure and return validation results."""
+        if rules is None:
+            rules = cls.get_regex_rules()
+        
+        if not isinstance(rules, list):
+            return False, ["Rules must be a list"]
+        
+        errors = []
+        for i, rule in enumerate(rules):
+            if not isinstance(rule, dict):
+                errors.append(f"Rule {i}: Must be an object/dictionary")
+                continue
+                
+            if 'pattern' not in rule:
+                errors.append(f"Rule {i}: Missing required 'pattern' field")
+            elif not isinstance(rule['pattern'], str):
+                errors.append(f"Rule {i}: 'pattern' must be a string")
+                
+            if 'replacement' not in rule:
+                errors.append(f"Rule {i}: Missing required 'replacement' field")
+            elif not isinstance(rule['replacement'], str):
+                errors.append(f"Rule {i}: 'replacement' must be a string")
+            
+            # Validate optional fields
+            if 'enabled' in rule and not isinstance(rule['enabled'], bool):
+                errors.append(f"Rule {i}: 'enabled' must be boolean")
+                
+            if 'is_regex' in rule and not isinstance(rule['is_regex'], bool):
+                errors.append(f"Rule {i}: 'is_regex' must be boolean")
+                
+            if 'priority' in rule and not isinstance(rule['priority'], int):
+                errors.append(f"Rule {i}: 'priority' must be integer")
+                
+            if 'flags' in rule and not isinstance(rule['flags'], list):
+                errors.append(f"Rule {i}: 'flags' must be a list")
+        
+        return len(errors) == 0, errors
+    
+    @classmethod
+    def import_rules_from_file(cls, file_path, format='yaml'):
+        """Import regex rules from a file."""
+        import json
+        
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"File not found: {file_path}")
+        
+        try:
+            with open(file_path, 'r') as file:
+                if format.lower() == 'json':
+                    imported_rules = json.load(file)
+                else:  # yaml
+                    imported_rules = yaml.safe_load(file)
+            
+            # Validate imported rules
+            is_valid, errors = cls.validate_regex_rules(imported_rules)
+            if not is_valid:
+                raise ValueError(f"Invalid rules format: {'; '.join(errors)}")
+            
+            return imported_rules
+            
+        except (json.JSONDecodeError, yaml.YAMLError) as e:
+            raise ValueError(f"Failed to parse {format.upper()} file: {str(e)}")
+    
+    @classmethod
+    def export_rules_to_file(cls, file_path, rules=None, format='yaml'):
+        """Export regex rules to a file."""
+        import json
+        
+        if rules is None:
+            rules = cls.get_regex_rules()
+        
+        # Validate rules before export
+        is_valid, errors = cls.validate_regex_rules(rules)
+        if not is_valid:
+            raise ValueError(f"Cannot export invalid rules: {'; '.join(errors)}")
+        
+        try:
+            with open(file_path, 'w') as file:
+                if format.lower() == 'json':
+                    json.dump(rules, file, indent=2)
+                else:  # yaml
+                    yaml.dump(rules, file, default_flow_style=False)
+            
+            return True
+            
+        except Exception as e:
+            raise IOError(f"Failed to write {format.upper()} file: {str(e)}")
+    
+    @classmethod
+    def get_rule_templates(cls):
+        """Get available rule templates from the templates module."""
+        try:
+            from plugins.available.regex_templates import get_all_templates, get_common_combinations
+            return {
+                'templates': get_all_templates(),
+                'combinations': get_common_combinations()
+            }
+        except ImportError:
+            return {'templates': {}, 'combinations': {}}

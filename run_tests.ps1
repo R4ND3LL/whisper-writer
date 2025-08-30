@@ -10,7 +10,7 @@ Write-Host ""
 Set-Location $PSScriptRoot
 
 $testsPassed = 0
-$totalTests = 3
+$totalTests = 4
 
 # Function to run a test file
 function Run-Test {
@@ -21,7 +21,7 @@ function Run-Test {
         [int]$ExpectedTests
     )
     
-    Write-Host "[$TestNumber/3] Running $Description..." -ForegroundColor Yellow
+    Write-Host "[$TestNumber/4] Running $Description..." -ForegroundColor Yellow
     Write-Host ("-" * 50) -ForegroundColor Gray
     
     try {
@@ -51,7 +51,8 @@ function Run-Test {
 $tests = @(
     @{File="test_regex_engine.py"; Description="basic regex engine tests"; Count=23},
     @{File="test_regex_advanced.py"; Description="advanced regex feature tests"; Count=25},
-    @{File="test_text_replacement.py"; Description="text replacement tests"; Count=19}
+    @{File="test_text_replacement.py"; Description="text replacement tests"; Count=19},
+    @{File="test_regex_config.py"; Description="configuration management tests"; Count=25}
 )
 
 foreach ($i in 0..($tests.Count-1)) {
@@ -74,12 +75,13 @@ if ($testsPassed -eq $totalTests) {
     Write-Host "================================================" -ForegroundColor Green
     Write-Host "[SUCCESS] ALL TESTS PASSED!" -ForegroundColor Green
     Write-Host "================================================" -ForegroundColor Green
-    Write-Host "Total: 67 tests across 3 files" -ForegroundColor White
+    Write-Host "Total: 92 tests across 4 files" -ForegroundColor White
     Write-Host "- test_regex_engine.py: 23 tests" -ForegroundColor White
     Write-Host "- test_regex_advanced.py: 25 tests" -ForegroundColor White
     Write-Host "- test_text_replacement.py: 19 tests" -ForegroundColor White
+    Write-Host "- test_regex_config.py: 25 tests" -ForegroundColor White
     Write-Host ""
-    Write-Host "The regex engine is working perfectly!" -ForegroundColor Green
+    Write-Host "The regex system with UI integration is working perfectly!" -ForegroundColor Green
     Write-Host "================================================" -ForegroundColor Green
 } else {
     Write-Host "================================================" -ForegroundColor Red
