@@ -172,32 +172,16 @@ def transcribe_api(audio_data):
 def post_process_transcription(transcription):
     """
     Post-process the transcription based on the user's settings.
+    Now uses the extensible processing pipeline.
     """
-    post_processing_options = ConfigManager.get_config_section('post_processing')
-    
-    # Remove silence dots pattern (when VAD fails)
-    # Only remove if it's JUST dots and spaces, nothing else
-    import re
-    if re.match(r'^[\s\.]+$', transcription):
-        # Entire transcription is just dots and spaces - silence
+    if not transcription:
         return ''
     
-    # Remove excessive dots (3+ dots with spaces between them)
-    # This keeps normal sentence periods but removes silence artifacts
-    transcription = re.sub(r'(\s*\.\s*){3,}', ' ', transcription)
-    transcription = transcription.strip()  # Remove leading/trailing whitespace
-
-    if post_processing_options['remove_trailing_period'] and transcription.endswith('.'):
-        transcription = transcription[:-1]
-
-    if post_processing_options['remove_capitalization']:
-        transcription = transcription.lower()
-
-    # Only add trailing space if there's actual content
-    if transcription and post_processing_options['add_trailing_space']:
-        transcription += ' '
-
-    return transcription
+    # Use the new pipeline system
+    from processing.factory import get_pipeline
+    pipeline = get_pipeline()
+    
+    return pipeline.process(transcription)
 
 
 def transcribe(audio_data, local_model=None):
