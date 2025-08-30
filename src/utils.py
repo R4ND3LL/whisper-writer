@@ -24,6 +24,19 @@ class ConfigManager:
         if cls._instance is None:
             raise RuntimeError("ConfigManager not initialized")
         return cls._instance.schema
+    
+    @classmethod
+    def get_config(cls):
+        """Get the full configuration dictionary."""
+        if cls._instance is None:
+            return None
+        return cls._instance.config
+    
+    # For backward compatibility
+    @classmethod
+    def get_full_config(cls):
+        """Alias for get_config."""
+        return cls.get_config()
 
     @classmethod
     def get_config_section(cls, *keys):
