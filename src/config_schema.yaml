@@ -173,6 +173,15 @@ misc:
     value: false
     type: bool
     description: "Set to true to hide the status window during operation."
+  theme_mode:
+    value: "auto"
+    type: str
+    options: ["auto", "light", "dark"]
+    description: "UI theme mode: 'auto' follows OS setting, 'light' forces light mode, 'dark' forces dark mode."
+  font_scale_percent:
+    value: 100
+    type: int
+    description: "Font scaling percentage (100% = normal, 130% = maximum). Set to 0 for automatic DPI scaling."
   noise_on_completion:
     value: false
     type: bool

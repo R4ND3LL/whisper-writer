@@ -37,19 +37,18 @@ class RegexSettingsWidget(QWidget):
         
         # Create table
         self.rules_table = QTableWidget()
-        self.rules_table.setColumnCount(6)
+        self.rules_table.setColumnCount(5)  # Reduced from 6 to 5 columns
         self.rules_table.setHorizontalHeaderLabels([
-            "Enabled", "Pattern", "Replacement", "Type", "Description", "Actions"
+            "Pattern", "Replacement", "Type", "Description", "Actions"
         ])
         
         # Set table properties
         header = self.rules_table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)  # Enabled
-        header.setSectionResizeMode(1, QHeaderView.Stretch)           # Pattern
-        header.setSectionResizeMode(2, QHeaderView.Stretch)           # Replacement  
-        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # Type
-        header.setSectionResizeMode(4, QHeaderView.Stretch)           # Description
-        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)  # Actions
+        header.setSectionResizeMode(0, QHeaderView.Stretch)           # Pattern
+        header.setSectionResizeMode(1, QHeaderView.Stretch)           # Replacement  
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)  # Type
+        header.setSectionResizeMode(3, QHeaderView.Stretch)           # Description
+        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)  # Actions
         
         rules_layout.addWidget(self.rules_table)
         
@@ -188,77 +187,106 @@ class RegexSettingsWidget(QWidget):
         self.rules_table.setRowCount(len(rules))
         
         for row, rule in enumerate(rules):
-            # Enabled checkbox
-            enabled_checkbox = QCheckBox()
-            enabled_checkbox.setChecked(rule.get('enabled', True))
-            enabled_checkbox.stateChanged.connect(lambda state, r=row: self.rule_enabled_changed(r, state))
-            self.rules_table.setCellWidget(row, 0, enabled_checkbox)
-            
             # Pattern
             pattern_item = QTableWidgetItem(rule.get('pattern', ''))
-            self.rules_table.setItem(row, 1, pattern_item)
+            self.rules_table.setItem(row, 0, pattern_item)
             
             # Replacement
             replacement_item = QTableWidgetItem(rule.get('replacement', ''))
-            self.rules_table.setItem(row, 2, replacement_item)
+            self.rules_table.setItem(row, 1, replacement_item)
             
             # Type - make it read-only
             rule_type = "Text" if not rule.get('is_regex', True) else "Regex"
             type_item = QTableWidgetItem(rule_type)
             type_item.setFlags(type_item.flags() & ~Qt.ItemIsEditable)  # Remove editable flag
             type_item.setToolTip("Use the Edit button to change between Regex and Text modes")
-            self.rules_table.setItem(row, 3, type_item)
+            self.rules_table.setItem(row, 2, type_item)
             
             # Description - make it read-only  
             description_item = QTableWidgetItem(rule.get('description', ''))
             description_item.setFlags(description_item.flags() & ~Qt.ItemIsEditable)  # Remove editable flag
             description_item.setToolTip("Use the Edit button to modify the description")
-            self.rules_table.setItem(row, 4, description_item)
+            self.rules_table.setItem(row, 3, description_item)
             
-            # Actions - add quick action buttons
+            # Actions - add quick action buttons with tighter spacing
             actions_widget = QWidget()
             actions_layout = QHBoxLayout()
-            actions_layout.setContentsMargins(4, 2, 4, 2)
-            actions_layout.setSpacing(2)
+            actions_layout.setContentsMargins(1, 1, 1, 1)  # Minimal margins
+            actions_layout.setSpacing(1)  # Minimal spacing between buttons
             
-            # Toggle enabled button
-            toggle_button = QPushButton("✓" if rule.get('enabled', True) else "✗")
-            toggle_button.setFixedSize(20, 20)
-            toggle_button.setStyleSheet("""
-                QPushButton {
-                    border: 1px solid #ccc;
-                    border-radius: 3px;
-                    font-size: 12px;
-                    font-weight: bold;
-                }
-                QPushButton:hover {
-                    background-color: #e0e0e0;
-                }
-            """)
-            toggle_button.setToolTip("Click to enable/disable this rule")
+            # Toggle enabled button with much more distinct styling
+            is_enabled = rule.get('enabled', True)
+            
+            # Use simpler symbols that fit better in small buttons
+            if is_enabled:
+                toggle_button = QPushButton("●")  # Filled circle for enabled
+                toggle_button.setStyleSheet("""
+                    QPushButton {
+                        background-color: #4CAF50;
+                        color: white;
+                        border: 1px solid #2E7D32;
+                        border-radius: 3px;
+                        font-size: 16px;
+                        font-weight: bold;
+                        padding: 0px;
+                        margin: 0px;
+                    }
+                    QPushButton:hover {
+                        background-color: #45a049;
+                        border-color: #1B5E20;
+                    }
+                """)
+                toggle_button.setToolTip("ENABLED - Click to disable")
+            else:
+                toggle_button = QPushButton("○")  # Empty circle for disabled
+                toggle_button.setStyleSheet("""
+                    QPushButton {
+                        background-color: #f44336;
+                        color: white;
+                        border: 1px solid #C62828;
+                        border-radius: 3px;
+                        font-size: 16px;
+                        font-weight: bold;
+                        padding: 0px;
+                        margin: 0px;
+                    }
+                    QPushButton:hover {
+                        background-color: #da190b;
+                        border-color: #B71C1C;
+                    }
+                """)
+                toggle_button.setToolTip("DISABLED - Click to enable")
+            
+            toggle_button.setFixedSize(28, 24)  # Slightly wider for better visibility
             toggle_button.clicked.connect(lambda checked, r=row: self.toggle_rule_enabled(r))
             actions_layout.addWidget(toggle_button)
             
-            # Duplicate button
-            dup_button = QPushButton("⧉")
-            dup_button.setFixedSize(20, 20)
+            # Duplicate button with simpler symbol
+            dup_button = QPushButton("∞")  # Infinity symbol suggests duplication/copying
+            dup_button.setFixedSize(28, 24)  # Match toggle button size
             dup_button.setStyleSheet("""
                 QPushButton {
-                    border: 1px solid #ccc;
+                    background-color: #FF9800;
+                    color: white;
+                    border: 1px solid #F57C00;
                     border-radius: 3px;
-                    font-size: 12px;
+                    font-size: 16px;
+                    font-weight: bold;
+                    padding: 0px;
+                    margin: 0px;
                 }
                 QPushButton:hover {
-                    background-color: #e0e0e0;
+                    background-color: #F57C00;
+                    border-color: #E65100;
                 }
             """)
-            dup_button.setToolTip("Click to duplicate this rule")
+            dup_button.setToolTip("DUPLICATE - Create a copy of this rule")
             dup_button.clicked.connect(lambda checked, r=row: self.duplicate_rule(r))
             actions_layout.addWidget(dup_button)
             
             actions_layout.addStretch()
             actions_widget.setLayout(actions_layout)
-            self.rules_table.setCellWidget(row, 5, actions_widget)
+            self.rules_table.setCellWidget(row, 4, actions_widget)
     
     def add_rule(self):
         """Add a new rule via dialog."""
@@ -299,8 +327,8 @@ class RegexSettingsWidget(QWidget):
         if current_row < 0:
             return
         
-        # Get rule info for confirmation
-        pattern = self.rules_table.item(current_row, 1).text()
+        # Get rule info for confirmation (Pattern is now column 0)
+        pattern = self.rules_table.item(current_row, 0).text()
         
         reply = QMessageBox.question(
             self, 
@@ -315,11 +343,6 @@ class RegexSettingsWidget(QWidget):
             self.load_rules()
             self.rules_changed.emit()
     
-    def rule_enabled_changed(self, row, state):
-        """Handle rule enabled state change."""
-        enabled = state == Qt.Checked
-        ConfigManager.update_regex_rule(row, enabled=enabled)
-        self.rules_changed.emit()
     
     def import_rules(self):
         """Import rules from a file."""

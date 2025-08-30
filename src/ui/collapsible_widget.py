@@ -25,15 +25,9 @@ class CollapsibleGroupBox(QWidget):
         
         # Header frame
         self.header_frame = QFrame()
+        self.header_frame.setObjectName("header_frame")
         self.header_frame.setFrameStyle(QFrame.Box)
-        self.header_frame.setStyleSheet("""
-            QFrame {
-                background-color: #f0f0f0;
-                border: 1px solid #c0c0c0;
-                border-radius: 3px;
-                padding: 2px;
-            }
-        """)
+        # Remove hardcoded styling - let global theme handle it
         
         # Header layout
         header_layout = QHBoxLayout()
@@ -43,19 +37,7 @@ class CollapsibleGroupBox(QWidget):
         # Toggle button (arrow)
         self.toggle_button = QPushButton()
         self.toggle_button.setFixedSize(20, 20)
-        self.toggle_button.setStyleSheet("""
-            QPushButton {
-                border: none;
-                background: transparent;
-                font-size: 12px;
-                font-weight: bold;
-                text-align: center;
-            }
-            QPushButton:hover {
-                background-color: #e0e0e0;
-                border-radius: 10px;
-            }
-        """)
+        # Remove hardcoded hover color - let global theme handle it
         self.toggle_button.clicked.connect(self.toggle_expanded)
         header_layout.addWidget(self.toggle_button)
         
@@ -71,15 +53,9 @@ class CollapsibleGroupBox(QWidget):
         
         # Content frame
         self.content_frame = QFrame()
+        self.content_frame.setObjectName("content_frame")
         self.content_frame.setFrameStyle(QFrame.Box)
-        self.content_frame.setStyleSheet("""
-            QFrame {
-                border: 1px solid #c0c0c0;
-                border-top: none;
-                border-radius: 0px 0px 3px 3px;
-                background-color: white;
-            }
-        """)
+        # Remove hardcoded white background - let global theme handle it
         
         # Content layout (this is where users add their widgets)
         self.content_layout = QVBoxLayout()

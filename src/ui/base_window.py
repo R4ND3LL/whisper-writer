@@ -9,9 +9,21 @@ class BaseWindow(QMainWindow):
         Initialize the base window.
         """
         super().__init__()
+        # Get scale factor for UI elements
+        self.scale_factor = self.get_ui_scale_factor()
         self.initUI(title, width, height)
         self.setWindowPosition()
         self.is_dragging = False
+    
+    def get_ui_scale_factor(self):
+        """Get the current UI scale factor from theme manager."""
+        try:
+            # Import here to avoid circular imports
+            from ui.theme_manager import ThemeManager
+            from utils import ConfigManager
+            return ThemeManager.get_current_scale_factor(ConfigManager)
+        except:
+            return 1.0  # Default scale if import fails
 
     def initUI(self, title, width, height):
         """
@@ -33,7 +45,8 @@ class BaseWindow(QMainWindow):
 
         # Add the title label
         title_label = QLabel('WhisperWriter')
-        title_label.setFont(QFont('Segoe UI', 12, QFont.Bold))
+        title_font_size = max(12, int(12 * self.scale_factor))  # Scale title font
+        title_label.setFont(QFont('Segoe UI', title_font_size, QFont.Bold))
         title_label.setAlignment(Qt.AlignCenter)
         title_label.setStyleSheet("color: #404040;")
 
@@ -43,16 +56,29 @@ class BaseWindow(QMainWindow):
         close_button_layout.setContentsMargins(0, 0, 0, 0)
 
         close_button = QPushButton('×')
-        close_button.setFixedSize(25, 25)
-        close_button.setStyleSheet("""
-            QPushButton {
+        close_button.setObjectName("close_button")  # For CSS targeting
+        # Scale the close button size and font - much larger base size for visibility
+        button_size = max(40, int(40 * self.scale_factor))  # Increased from 25 to 40
+        close_font_size = max(24, int(24 * self.scale_factor))  # Increased from 16 to 24
+        close_button.setFixedSize(button_size, button_size)
+        # Smaller hover circle that doesn't get clipped
+        hover_radius = max(12, int(12 * self.scale_factor))  # Much smaller radius
+        close_button.setStyleSheet(f"""
+            QPushButton {{
                 background-color: transparent;
                 border: none;
                 color: #404040;
-            }
-            QPushButton:hover {
-                color: #000000;
-            }
+                font-size: {close_font_size}px;
+                font-weight: bold;
+                text-align: center;
+                margin: 4px;
+            }}
+            QPushButton:hover {{
+                color: #ffffff;
+                background-color: #ff4444;
+                border-radius: {hover_radius}px;
+                margin: 2px;
+            }}
         """)
         close_button.clicked.connect(self.handleCloseButton)
 

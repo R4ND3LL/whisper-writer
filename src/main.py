@@ -12,6 +12,7 @@ from result_thread import ResultThread
 from ui.main_window import MainWindow
 from ui.settings_window import SettingsWindow
 from ui.status_window import StatusWindow
+from ui.theme_manager import ThemeManager
 from transcription import create_local_model
 from input_simulation import InputSimulator
 from utils import ConfigManager
@@ -23,10 +24,18 @@ class WhisperWriterApp(QObject):
         Initialize the application, opening settings window if no configuration file is found.
         """
         super().__init__()
+        
+        # Setup high DPI support BEFORE creating QApplication
+        ThemeManager.setup_high_dpi_support()
+        
         self.app = QApplication(sys.argv)
         self.app.setWindowIcon(QIcon(os.path.join('assets', 'ww-logo.png')))
 
         ConfigManager.initialize()
+        
+        # Apply theme and font scaling after config is loaded
+        self.theme_manager = ThemeManager()
+        self.theme_manager.apply_theme(self.app, ConfigManager)
 
         self.settings_window = SettingsWindow()
         self.settings_window.settings_closed.connect(self.on_settings_closed)
@@ -106,6 +115,17 @@ class WhisperWriterApp(QObject):
         self.cleanup()
         QApplication.quit()
         QProcess.startDetached(sys.executable, sys.argv)
+    
+    def refresh_theme(self):
+        """
+        Refresh the theme without restarting the app (for theme/font changes).
+        """
+        try:
+            print("Refreshing theme...")
+            ConfigManager.reload_config()
+            self.theme_manager.apply_theme(self.app, ConfigManager)
+        except Exception as e:
+            print(f"[ERROR] Failed to refresh theme: {e}")
 
     def on_settings_closed(self):
         """

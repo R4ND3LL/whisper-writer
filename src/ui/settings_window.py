@@ -4,9 +4,10 @@ from dotenv import set_key, load_dotenv
 from PyQt5.QtWidgets import (
     QApplication, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QComboBox, QCheckBox,
     QMessageBox, QTabWidget, QWidget, QSizePolicy, QSpacerItem, QToolButton, QStyle, QFileDialog,
-    QGroupBox
+    QGroupBox, QSpinBox
 )
 from ui.collapsible_widget import CollapsibleGroupBox
+from ui.font_scale_spinbox import FontScaleSpinBox
 from PyQt5.QtCore import Qt, QCoreApplication, QProcess, pyqtSignal
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -21,7 +22,14 @@ class SettingsWindow(BaseWindow):
 
     def __init__(self):
         """Initialize the settings window."""
-        super().__init__('Settings', 1100, 1100)
+        # Calculate scaled window size based on font scaling
+        from ui.theme_manager import ThemeManager
+        scale_factor = ThemeManager.get_current_scale_factor(ConfigManager)
+        base_width, base_height = 1100, 1100
+        scaled_width = int(base_width * scale_factor)
+        scaled_height = int(base_height * scale_factor)
+        
+        super().__init__('Settings', scaled_width, scaled_height)
         self.schema = ConfigManager.get_schema()
         self.init_settings_ui()
 
@@ -141,7 +149,10 @@ class SettingsWindow(BaseWindow):
         meta_type = meta.get('type')
         current_value = self.get_config_value(category, sub_category, key, meta)
 
-        if meta_type == 'bool':
+        # Special handling for font scale percentage
+        if key == 'font_scale_percent':
+            return self.create_font_scale_spinbox(current_value)
+        elif meta_type == 'bool':
             return self.create_checkbox(current_value, key)
         elif meta_type == 'str' and 'options' in meta:
             return self.create_combobox(current_value, meta['options'])
@@ -179,6 +190,12 @@ class SettingsWindow(BaseWindow):
             container = QWidget()
             container.setLayout(layout)
             return container
+        return widget
+    
+    def create_font_scale_spinbox(self, value):
+        """Create a spinbox for font scale percentage (0=auto, 100-150%)."""
+        widget = FontScaleSpinBox()
+        widget.setValue(value)
         return widget
 
     def create_help_button(self, description):
@@ -257,6 +274,8 @@ class SettingsWindow(BaseWindow):
             widget.setChecked(value)
         elif isinstance(widget, QComboBox):
             widget.setCurrentText(value)
+        elif isinstance(widget, QSpinBox) or isinstance(widget, FontScaleSpinBox):
+            widget.setValue(value if value is not None else 100)
         elif isinstance(widget, QLineEdit):
             widget.setText(str(value) if value is not None else '')
         elif isinstance(widget, QWidget) and widget.layout():
@@ -271,6 +290,8 @@ class SettingsWindow(BaseWindow):
             return widget.isChecked()
         elif isinstance(widget, QComboBox):
             return widget.currentText() or None
+        elif isinstance(widget, QSpinBox) or isinstance(widget, FontScaleSpinBox):
+            return widget.value()
         elif isinstance(widget, QLineEdit):
             text = widget.text()
             if value_type == 'int':
