@@ -17,6 +17,15 @@ from transcription import create_local_model
 from input_simulation import InputSimulator
 from utils import ConfigManager
 
+# Import wake/sleep state management (Qt-based)
+try:
+    from wake_sleep_state_manager import WakeSleepStateManager
+    _WAKE_SLEEP_AVAILABLE = True
+except ImportError:
+    # Fallback if wake/sleep not available
+    WakeSleepStateManager = None
+    _WAKE_SLEEP_AVAILABLE = False
+
 
 class WhisperWriterApp(QObject):
     def __init__(self):
@@ -41,7 +50,9 @@ class WhisperWriterApp(QObject):
         self.settings_window.settings_closed.connect(self.on_settings_closed)
         self.settings_window.settings_saved.connect(self.restart_app)
 
-        if ConfigManager.config_file_exists():
+        config_exists = ConfigManager.config_file_exists()
+        
+        if config_exists:
             self.initialize_components()
         else:
             print('No valid configuration file found. Opening settings window...')
@@ -68,11 +79,38 @@ class WhisperWriterApp(QObject):
         self.main_window.startListening.connect(self.key_listener.start)
         self.main_window.closeApp.connect(self.exit_app)
 
-        if not ConfigManager.get_config_value('misc', 'hide_status_window'):
+        hide_status = ConfigManager.get_config_value('misc', 'hide_status_window')
+        
+        if not hide_status:
             self.status_window = StatusWindow()
+
+        # Setup wake/sleep state management (after status window creation)
+        self.setup_wake_sleep_management()
 
         self.create_tray_icon()
         self.main_window.show()
+
+    def setup_wake_sleep_management(self):
+        """
+        Setup wake/sleep state management using Qt signals
+        """
+        if not _WAKE_SLEEP_AVAILABLE:
+            return
+        
+        # Get the state manager instance
+        self.wake_sleep_manager = WakeSleepStateManager.get_instance()
+        
+        # Connect signal to update status window when state changes
+        if hasattr(self, 'status_window') and self.status_window:
+            self.wake_sleep_manager.stateChanged.connect(self.status_window.update_wake_sleep_state)
+        
+        # Initialize state based on config
+        try:
+            WakeSleepStateManager.initialize_from_config()
+        except Exception as e:
+            print(f"Error initializing wake/sleep state from config: {e}")
+            WakeSleepStateManager.set_state('awake')
+
 
     def create_tray_icon(self):
         """
@@ -102,6 +140,9 @@ class WhisperWriterApp(QObject):
             self.key_listener.stop()
         if self.input_simulator:
             self.input_simulator.cleanup()
+        
+        # Qt signals are automatically disconnected when objects are destroyed
+        # No manual cleanup needed for wake/sleep state manager
 
     def exit_app(self):
         """
@@ -169,7 +210,8 @@ class WhisperWriterApp(QObject):
             return
 
         self.result_thread = ResultThread(self.local_model)
-        if not ConfigManager.get_config_value('misc', 'hide_status_window'):
+        hide_status = ConfigManager.get_config_value('misc', 'hide_status_window')
+        if not hide_status:
             self.result_thread.statusSignal.connect(self.status_window.updateStatus)
             self.status_window.closeSignal.connect(self.stop_result_thread)
         self.result_thread.resultSignal.connect(self.on_transcription_complete)

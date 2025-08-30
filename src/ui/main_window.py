@@ -53,7 +53,10 @@ class MainWindow(BaseWindow):
         """
         Emit the startListening signal when the start button is pressed.
         """
+        from utils import ConfigManager
+        ConfigManager.verbose_print("[DEBUG] Start button pressed - emitting startListening signal")
         self.startListening.emit()
+        ConfigManager.verbose_print("[DEBUG] Start button - hiding main window")
         self.hide()
 
 if __name__ == '__main__':

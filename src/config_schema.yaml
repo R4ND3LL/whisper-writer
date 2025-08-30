@@ -169,6 +169,18 @@ misc:
     value: true
     type: bool
     description: "Set to true to print the script status and transcribed text to the terminal."
+  verbose_logging:
+    value: false
+    type: bool
+    description: "Enable detailed debug logging output for troubleshooting."
+  save_audio_debug:
+    value: false
+    type: bool
+    description: "Save raw audio recordings to debug folder for troubleshooting audio issues."
+  audio_debug_folder:
+    value: "debug_audio"
+    type: str
+    description: "Folder path for saving debug audio files (relative to WhisperWriter directory or absolute path)."
   hide_status_window:
     value: false
     type: bool
@@ -238,3 +250,36 @@ plugins:
                   type: str
               context_values:
                 type: object
+
+  wake_sleep_processor:
+    enabled:
+      value: true
+      type: bool
+      description: "Enable or disable wake/sleep word detection."
+    wake_words:
+      value: ["hey whisper", "start dictation", "wake up"]
+      type: array
+      description: "List of phrases that wake up transcription from sleep mode."
+      items:
+        type: str
+    sleep_words:
+      value: ["go to sleep", "stop dictating", "sleep mode"]
+      type: array
+      description: "List of phrases that put transcription into sleep mode."
+      items:
+        type: str
+    case_sensitive:
+      value: false
+      type: bool
+      description: "Whether wake/sleep word matching is case sensitive."
+    exact_match:
+      value: true
+      type: bool
+      description: "Require phrase to appear at sentence boundaries (true) or allow partial matching anywhere (false)."
+    initial_state:
+      value: "awake"
+      type: str
+      description: "Initial state when application starts."
+      options:
+        - "awake"
+        - "sleeping"

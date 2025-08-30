@@ -176,6 +176,10 @@ class ResultThread(QThread):
 
         ConfigManager.console_print(f'Recording finished. Size: {audio_data.size} samples, Duration: {duration:.2f} seconds')
 
+        # Save debug audio if enabled
+        if ConfigManager.is_audio_debug_enabled():
+            self._save_debug_audio(audio_data, self.sample_rate)
+
         min_duration_ms = recording_options.get('min_duration') or 100
 
         if (duration * 1000) < min_duration_ms:
@@ -183,3 +187,27 @@ class ResultThread(QThread):
             return None
 
         return audio_data
+
+    def _save_debug_audio(self, audio_data, sample_rate):
+        """Save raw audio data to debug folder for troubleshooting."""
+        try:
+            import soundfile as sf
+            import datetime
+            import os
+            
+            # Generate timestamp-based filename  
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]  # milliseconds
+            debug_folder = ConfigManager.get_audio_debug_folder()
+            filename = f"whisper_audio_{timestamp}.wav"
+            filepath = os.path.join(debug_folder, filename)
+            
+            # Save as WAV file (Windows-compatible)
+            sf.write(filepath, audio_data, sample_rate)
+            ConfigManager.verbose_print(f"[DEBUG] Audio saved to: {filepath}")
+            
+            # Print info message (always shown when debug enabled)
+            if ConfigManager.is_audio_debug_enabled():
+                print(f"[AUDIO DEBUG] Saved raw audio: {filepath}")
+                
+        except Exception as e:
+            ConfigManager.verbose_print(f"[DEBUG] Failed to save debug audio: {e}")

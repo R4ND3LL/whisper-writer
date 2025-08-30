@@ -341,9 +341,27 @@ class KeyListener:
 
     def start(self):
         """Start the active backend."""
+        from utils import ConfigManager
+        ConfigManager.verbose_print(f"[DEBUG] KeyListener.start() called - active_backend: {self.active_backend}")
         if self.active_backend:
+            ConfigManager.verbose_print(f"[DEBUG] Starting active backend: {type(self.active_backend).__name__}")
             self.active_backend.start()
+            ConfigManager.verbose_print(f"[DEBUG] Active backend started successfully")
+            
+            # Get the activation key from config and display user-friendly message
+            activation_key = ConfigManager.get_config_value('recording_options', 'activation_key')
+            ConfigManager.verbose_print(f"[DEBUG] Retrieved activation_key: {activation_key}")
+            if activation_key is None:
+                activation_key = 'meta+space'  # Fallback default
+                ConfigManager.verbose_print(f"[DEBUG] Using fallback activation_key: {activation_key}")
+            
+            # Convert meta to Windows key for user clarity
+            user_friendly_key = activation_key.replace('meta', 'Windows')
+            print(f"\n[INFO] WhisperWriter is now listening for hotkey input.")
+            print(f"[INFO] Press {user_friendly_key.upper()} to begin transcription.")
+            print(f"[INFO] Press the same key again to stop recording.\n")
         else:
+            ConfigManager.verbose_print("[DEBUG] ERROR: No active backend selected")
             raise RuntimeError("No active backend selected")
 
     def stop(self):

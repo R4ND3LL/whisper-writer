@@ -17,6 +17,7 @@ class ConfigManager:
             cls._instance.schema = cls._instance.load_config_schema(schema_path)
             cls._instance.config = cls._instance.load_default_config()
             cls._instance.load_user_config()
+            cls._add_default_regex_rules()
 
     @classmethod
     def get_schema(cls):
@@ -339,3 +340,66 @@ class ConfigManager:
             }
         except ImportError:
             return {'templates': {}, 'combinations': {}}
+
+    @classmethod
+    def _add_default_regex_rules(cls):
+        """Add default regex rules for common model hallucinations."""
+        existing_rules = cls.get_regex_rules()
+        
+        # Check if underscore rule already exists
+        for rule in existing_rules:
+            if 'underscore' in rule.get('description', '').lower():
+                return  # Rule already exists
+        
+        # Add aggressive underscore removal pattern
+        cls.add_regex_rule(
+            pattern=r'_+',  # Match any sequence of 1 or more underscores
+            replacement='',
+            description='Remove all underscore sequences from model hallucinations',
+            enabled=True,
+            is_regex=True,
+            priority=1
+        )
+
+    @classmethod
+    def verbose_print(cls, message: str):
+        """Print debug message only if verbose logging is enabled."""
+        if not cls._instance:
+            return
+        enabled = cls.get_config_value('misc', 'verbose_logging')
+        if enabled:
+            print(message)
+
+    @classmethod
+    def get_audio_debug_folder(cls):
+        """Get the folder path for saving debug audio files."""
+        import os
+        
+        # Get configured path (default: "debug_audio")
+        configured_path = cls.get_config_value('misc', 'audio_debug_folder')
+        
+        # Handle None case (fallback to default)
+        if configured_path is None:
+            configured_path = 'debug_audio'
+        
+        # If it's an absolute path, use it directly
+        if os.path.isabs(configured_path):
+            debug_folder = configured_path
+        else:
+            # Relative path: make it relative to WhisperWriter project root
+            project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            debug_folder = os.path.join(project_root, configured_path)
+        
+        os.makedirs(debug_folder, exist_ok=True)
+        return debug_folder
+
+    @classmethod
+    def is_audio_debug_enabled(cls):
+        """Check if audio debug saving is enabled."""
+        if not cls._instance:
+            return False
+        enabled = cls.get_config_value('misc', 'save_audio_debug')
+        # Handle None case (default to False)
+        if enabled is None:
+            return False
+        return bool(enabled)

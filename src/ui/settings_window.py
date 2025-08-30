@@ -99,14 +99,37 @@ class SettingsWindow(BaseWindow):
                     self.add_setting_widget(layout, key, meta, category, sub_category)
 
     def create_buttons(self):
-        """Create reset and save buttons."""
+        """Create buttons with Windows-standard layout."""
+        # Add smaller spacer to reduce gap between tabs and buttons
+        spacer = QSpacerItem(20, 12, QSizePolicy.Minimum, QSizePolicy.Fixed)
+        self.main_layout.addItem(spacer)
+        
+        # Single button row: Reset left-justified, OK/Cancel right-aligned
+        button_layout = QHBoxLayout()
+        
+        # Reset button left-justified
         reset_button = QPushButton('Reset to saved settings')
         reset_button.clicked.connect(self.reset_settings)
-        self.main_layout.addWidget(reset_button)
-
-        save_button = QPushButton('Save')
+        button_layout.addWidget(reset_button)
+        
+        # Spacer to push OK/Cancel to right
+        button_layout.addStretch()
+        
+        # Windows standard: OK button first, Cancel button second
+        save_button = QPushButton('    OK    ')  # Extra padding with spaces
+        save_button.setDefault(True)  # Make OK the default button
+        save_button.setMinimumWidth(120)  # 50% larger than 80px
         save_button.clicked.connect(self.save_settings)
-        self.main_layout.addWidget(save_button)
+        
+        cancel_button = QPushButton('  Cancel  ')  # Extra padding with spaces
+        cancel_button.setMinimumWidth(120)  # 50% larger than 80px
+        cancel_button.clicked.connect(self.cancel_settings)
+        
+        # Add buttons in Windows order: OK, Cancel
+        button_layout.addWidget(save_button)
+        button_layout.addWidget(cancel_button)
+        
+        self.main_layout.addLayout(button_layout)
 
     def add_setting_widget(self, layout, key, meta, category, sub_category=None):
         """Add a setting widget to the layout."""
@@ -237,6 +260,11 @@ class SettingsWindow(BaseWindow):
         ConfigManager.save_config()
         QMessageBox.information(self, 'Settings Saved', 'Settings have been saved. The application will now restart.')
         self.settings_saved.emit()
+        self.close()
+
+    def cancel_settings(self):
+        """Cancel settings changes and close window without saving."""
+        # Just close - closeEvent will handle the confirmation dialog
         self.close()
 
     def save_setting(self, widget, category, sub_category, key, meta):

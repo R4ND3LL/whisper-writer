@@ -72,6 +72,8 @@ instance/
 docs/_build/
 **/docs.local/*
 cla*.md
+.cla*/**
+.a*-os/**
 
 # PyBuilder
 target/
@@ -133,3 +135,6 @@ dmypy.json
 # Configuration files
 config.yaml
 /.idea/**
+
+**/debug_audio/*
+Screenshot*.*

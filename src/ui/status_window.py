@@ -28,24 +28,71 @@ class StatusWindow(BaseWindow):
         status_layout = QHBoxLayout()
         status_layout.setContentsMargins(0, 0, 0, 0)
 
+        # Load icons
         self.icon_label = QLabel()
         self.icon_label.setFixedSize(32, 32)
         microphone_path = os.path.join('assets', 'microphone.png')
         pencil_path = os.path.join('assets', 'pencil.png')
+        
         self.microphone_pixmap = QPixmap(microphone_path).scaled(32, 32, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         self.pencil_pixmap = QPixmap(pencil_path).scaled(32, 32, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        
+        # Create a simple sleep icon using text if no image exists
+        self.sleep_pixmap = self.create_sleep_icon()
+        
         self.icon_label.setPixmap(self.microphone_pixmap)
         self.icon_label.setAlignment(Qt.AlignCenter)
 
         self.status_label = QLabel('Recording...')
         self.status_label.setFont(QFont('Segoe UI', 12))
 
+        # Wake/sleep state indicator
+        self.wake_sleep_label = QLabel('●')  # Filled circle for awake
+        self.wake_sleep_label.setFont(QFont('Segoe UI', 16))
+        self.wake_sleep_label.setStyleSheet("color: #4CAF50;")  # Green for awake
+        self.wake_sleep_label.setToolTip("Transcription is awake")
+        self.current_wake_sleep_state = 'awake'
+
         status_layout.addStretch(1)
         status_layout.addWidget(self.icon_label)
         status_layout.addWidget(self.status_label)
+        status_layout.addWidget(self.wake_sleep_label)
         status_layout.addStretch(1)
 
         self.main_layout.addLayout(status_layout)
+    
+    def create_sleep_icon(self):
+        """
+        Create a simple sleep icon using text
+        
+        Returns:
+            QPixmap: A pixmap with a sleep symbol
+        """
+        # Try to load a sleep icon if it exists
+        sleep_icon_path = os.path.join('assets', 'sleep.png')
+        if os.path.exists(sleep_icon_path):
+            return QPixmap(sleep_icon_path).scaled(32, 32, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        
+        # If no sleep icon exists, we'll rely on the wake_sleep_label for indication
+        return self.microphone_pixmap  # Fallback to microphone icon
+    
+    def update_wake_sleep_state(self, state: str):
+        """
+        Update the wake/sleep state indicator
+        
+        Args:
+            state: 'awake' or 'sleeping'
+        """
+        self.current_wake_sleep_state = state
+        
+        if state == 'sleeping':
+            self.wake_sleep_label.setText('●')  # Filled circle for sleeping
+            self.wake_sleep_label.setStyleSheet("color: #FF5722;")  # Orange/red for sleeping
+            self.wake_sleep_label.setToolTip("Transcription is sleeping - recording active but output suppressed")
+        else:  # awake
+            self.wake_sleep_label.setText('●')  # Filled circle for awake
+            self.wake_sleep_label.setStyleSheet("color: #4CAF50;")  # Green for awake
+            self.wake_sleep_label.setToolTip("Transcription is awake")
         
     def show(self):
         """
@@ -78,11 +125,17 @@ class StatusWindow(BaseWindow):
         """
         if status == 'recording':
             self.icon_label.setPixmap(self.microphone_pixmap)
-            self.status_label.setText('Recording...')
+            if self.current_wake_sleep_state == 'sleeping':
+                self.status_label.setText('Recording (Sleeping)...')
+            else:
+                self.status_label.setText('Recording...')
             self.show()
         elif status == 'transcribing':
             self.icon_label.setPixmap(self.pencil_pixmap)
-            self.status_label.setText('Transcribing...')
+            if self.current_wake_sleep_state == 'sleeping':
+                self.status_label.setText('Transcribing (Sleeping)...')
+            else:
+                self.status_label.setText('Transcribing...')
 
         if status in ('idle', 'error', 'cancel'):
             self.close()
